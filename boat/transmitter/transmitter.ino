@@ -21,6 +21,20 @@
 #define TXPin    12  // Neo6M TX pin
 #define GPSBaud 9600 // Neo6M Baud rate
 
+#define S0 32 //MUX control pins
+#define S1 35
+#define S2 34
+#define S3 0
+#define MUX_SIG 4 //MUX pin to turn on and off
+#define MUX_EN 23 //MUX input Pin
+
+//#define PIN_ACS 33  //??
+#define PIN_BAT_AUX 13
+#define PIN_POTENCIOMETER 14
+#define PIN_BAT_BANK_V 2
+#define PIN_BAT_BANK_C 21
+#define PIN_MOTOR 22
+
 
 //defines
 
@@ -30,11 +44,16 @@
 #define TXPOWER 20    // Operating LoRa Transmition Power
 #define BAUD 2000000  // BAUD serial rate
 
-#define PIN_POTENCIOMETER 36
 
 #define SHUNT    0x48  // Address of the ADC measuring the motor current
 #define MODULES  0x49 // Address of the ADC on the solar panel modules
 #define BATTERY  0x4A // Address of the ADC on the battery
+
+//Conversion Ratios (Voltage Divider)
+final float DT1_RATIO = 19.333333333f;
+final float DT2_RATIO = 4.970588235f;
+final float DT3_RATIO = 28.5f;
+final float DT4_RATIO = 1.564102564f;
 
 //objetos
 
@@ -48,6 +67,20 @@ HardwareSerial ss(2); // Hardware Serial comunication object
 Adafruit_ADS1115 ads_shunt(SHUNT);
 Adafruit_ADS1115 ads_modules(MODULES);
 Adafruit_ADS1115 ads_battery(BATTERY);
+
+//MUX Selecting Channels
+int MUX_CH[11][4] = {(0,0,0,0), //Channel 0
+                     (1,0,0,0), //Channel 1
+                     (0,1,0,0), //Channel 2
+                     (1,1,0,0), //Channel 3
+                     (0,0,1,0), //Channel 4
+                     (1,0,1,0), //Channel 5
+                     (0,1,1,0), //Channel 6
+                     (1,1,1,0), //Channel 7
+                     (0,0,0,1), //Channel 8
+                     (1,0,0,1}, //Channel 9
+                     (0,1,0,1)};//Channel 10
+
 
 
 
@@ -65,6 +98,13 @@ Adafruit_ADS1115 ads_battery(BATTERY);
 //setup
 
 //functions
+
+void SetMuxChannel(int ChannelOrder[]){
+  digitalWrite(S0, ChannelOrder[0]);
+  digitalWrite(S1, ChannelOrder[1]);
+  digitalWrite(S2, ChannelOrder[2]);
+  digitalWrite(S3, ChannelOrder[3]);
+}
 
 double LatitudeGPS( ){
 
@@ -99,18 +139,59 @@ int16_t ModulesRead(){
 }
 
 float PotentiometerRead(){
+  float readVoltage = (analogRead(PIN_POTENCIOMETER) * 3.3f) / 1024f;  //if analog read == 1024, it is reading 3.3V, so convert the reading from bits to Voltage
+  
+  return readVoltage * DT4_RATIO; //Multiply by the ratio of the voltage divider to find the true voltage value
+}
 
-  return 0;
+float DmsRead(){
+  SetMuxChannel(MUX_CH[0]);
+  float readVoltage = (analogRead(MUX_EN) * 3.3f) / 1024f;  //if analog read == 1024, it is reading 3.3V, so convert the reading from bits to Voltage
+  
+  return readVoltage * DT4_RATIO; //Multiply by the ratio of the voltage divider to find the true voltage value
+
+boolean ButtonReverseRead(){
+  SetMuxChannel(MUX_CH[1]);
+  
+  return (analogRead(MUX_EN) < 300); //If it's less than 300 bits, then consider the button as closed
+}
+
+boolean ButtonMotorRead(){
+  SetMuxChannel(MUX_CH[2]);
+  
+  return (analogRead(MUX_EN) < 300); //If it's less than 300 bits, then consider the button as closed
+}
+
+boolean ButtonCruiseRead(){
+  SetMuxChannel(MUX_CH[3]);
+  
+  return (analogRead(MUX_EN) < 300); //If it's less than 300 bits, then consider the button as closed
+}
+
+float CoolerLeftRead(){
+  SetMuxChannel(MUX_CH[4]);
+  float readVoltage = (analogRead(MUX_EN) * 3.3f) / 1024f;  //if analog read == 1024, it is reading 3.3V, so convert the reading from bits to Voltage
+  
+  return readVoltage * DT2_RATIO; //Multiply by the ratio of the voltage divider to find the true voltage value
+}
+
+float CoolerRightRead(){
+  SetMuxChannel(MUX_CH[5]);
+  float readVoltage = (analogRead(MUX_EN) * 3.3f) / 1024f;  //if analog read == 1024, it is reading 3.3V, so convert the reading from bits to Voltage
+  
+  return readVoltage * DT2_RATIO; //Multiply by the ratio of the voltage divider to find the true voltage value
 }
 
 boolean LeftPumpRead(){
-
-  return 0;
+  SetMuxChannel(MUX_CH[7]);
+  
+  return (analogRead(MUX_EN) < 300); //If it's less than 300 bits, then consider the button as closed
 }
 
 boolean RightPumpRead(){
-
-  return 0;
+  SetMuxChannel(MUX_CH[6]);
+    
+  return (analogRead(MUX_EN) < 300); //If it's less than 300 bits, then consider the button as closed
 }
 
 
@@ -121,6 +202,12 @@ void setup() {
   ss.begin(GPSBaud, SERIAL_8N1, TXPin, RXPin); // GPS serial communication
 
   pinMode(PIN_POTENCIOMETER, INPUT);
+  //MUX pins
+  pinMode(S0, OUTPUT);
+  pinMode(S1, OUTPUT);
+  pinMode(S2, OUTPUT);
+  pinMode(S3, OUTPUT);
+  pinMode(MUX_EN, INPUT);
   
   while (!Serial);
   Serial.println();
@@ -173,6 +260,27 @@ void loop() {
   // Write the potentiometer state that controls the motor 
   LoRa.print(PotentiometerRead());
   LoRa.print(CSV_Separator());
+
+  //MUX readings
+  
+  // Write DMS reading
+  LoRa.print(DmsRead());
+  LoRa.print(CSV_Separator());
+  //Write reverse button (ré)
+  LoRa.print(ButtonReverseRead()); //For all the buttons -> "true" means closed and "false" means open
+  LoRa.print(CSV_Separator());
+  //Write motor button state (on/off)
+  LoRa.print(ButtonMotorRead()); //For all the buttons -> "true" means closed and "false" means open
+  LoRa.print(CSV_Separator());
+  //Write cruise button state
+  LoRa.print(ButtonCruiseRead()); //For all the buttons -> "true" means closed and "false" means open
+  LoRa.print(CSV_Separator());
+  //Write left cooler tension
+  LoRa.print(CoolerLeftRead());
+  LoRa.print(CSV_Separator());
+  //Write right cooler tension
+  LoRa.print(CoolerRightRead());
+  LoRa.print(CSV_Separator());
   // Write left pump state
   LoRa.print(LeftPumpRead());
   LoRa.print(CSV_Separator());
@@ -180,10 +288,11 @@ void loop() {
   LoRa.print(RightPumpRead());
   LoRa.print(CSV_Separator());
   
+  
 
   
   //LoRa.print(counter);
   LoRa.endPacket();
 
-  //delay(50);
+  delay(50);
 }
