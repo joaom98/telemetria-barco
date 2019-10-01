@@ -25,8 +25,8 @@
 #define S1 35
 #define S2 34
 #define S3 0
-#define MUX_SIG 4 //MUX pin to turn on and off
-#define MUX_EN 23 //MUX input Pin
+#define MUX_EN 4 //MUX pin to turn on and off
+#define MUX_SIG 23 //MUX input Pin
 
 //#define PIN_ACS 33  //??
 #define PIN_BAT_AUX 13
@@ -146,38 +146,38 @@ float PotentiometerRead(){
 
 float DmsRead(){
   SetMuxChannel(MUX_CH[0]);
-  float readVoltage = (analogRead(MUX_EN) * 3.3f) / 1024f;  //if analog read == 1024, it is reading 3.3V, so convert the reading from bits to Voltage
+  float readVoltage = (analogRead(MUX_SIG) * 3.3f) / 1024f;  //if analog read == 1024, it is reading 3.3V, so convert the reading from bits to Voltage
   
   return readVoltage * DT4_RATIO; //Multiply by the ratio of the voltage divider to find the true voltage value
 
 boolean ButtonReverseRead(){
   SetMuxChannel(MUX_CH[1]);
   
-  return (analogRead(MUX_EN) < 300); //If it's less than 300 bits, then consider the button as closed
+  return (analogRead(MUX_SIG) < 300); //If it's less than 300 bits, then consider the button as closed
 }
 
 boolean ButtonMotorRead(){
   SetMuxChannel(MUX_CH[2]);
   
-  return (analogRead(MUX_EN) < 300); //If it's less than 300 bits, then consider the button as closed
+  return (analogRead(MUX_SIG) < 300); //If it's less than 300 bits, then consider the button as closed
 }
 
 boolean ButtonCruiseRead(){
   SetMuxChannel(MUX_CH[3]);
   
-  return (analogRead(MUX_EN) < 300); //If it's less than 300 bits, then consider the button as closed
+  return (analogRead(MUX_SIG) < 300); //If it's less than 300 bits, then consider the button as closed
 }
 
 float CoolerLeftRead(){
   SetMuxChannel(MUX_CH[4]);
-  float readVoltage = (analogRead(MUX_EN) * 3.3f) / 1024f;  //if analog read == 1024, it is reading 3.3V, so convert the reading from bits to Voltage
+  float readVoltage = (analogRead(MUX_SIG) * 3.3f) / 1024f;  //if analog read == 1024, it is reading 3.3V, so convert the reading from bits to Voltage
   
   return readVoltage * DT2_RATIO; //Multiply by the ratio of the voltage divider to find the true voltage value
 }
 
 float CoolerRightRead(){
   SetMuxChannel(MUX_CH[5]);
-  float readVoltage = (analogRead(MUX_EN) * 3.3f) / 1024f;  //if analog read == 1024, it is reading 3.3V, so convert the reading from bits to Voltage
+  float readVoltage = (analogRead(MUX_SIG) * 3.3f) / 1024f;  //if analog read == 1024, it is reading 3.3V, so convert the reading from bits to Voltage
   
   return readVoltage * DT2_RATIO; //Multiply by the ratio of the voltage divider to find the true voltage value
 }
@@ -185,13 +185,13 @@ float CoolerRightRead(){
 boolean LeftPumpRead(){
   SetMuxChannel(MUX_CH[7]);
   
-  return (analogRead(MUX_EN) < 300); //If it's less than 300 bits, then consider the button as closed
+  return (analogRead(MUX_SIG) < 300); //If it's less than 300 bits, then consider the button as closed
 }
 
 boolean RightPumpRead(){
   SetMuxChannel(MUX_CH[6]);
     
-  return (analogRead(MUX_EN) < 300); //If it's less than 300 bits, then consider the button as closed
+  return (analogRead(MUX_SIG) < 300); //If it's less than 300 bits, then consider the button as closed
 }
 
 
@@ -207,7 +207,7 @@ void setup() {
   pinMode(S1, OUTPUT);
   pinMode(S2, OUTPUT);
   pinMode(S3, OUTPUT);
-  pinMode(MUX_EN, INPUT);
+  pinMode(MUX_SIG, INPUT);
   
   while (!Serial);
   Serial.println();
